@@ -150,7 +150,7 @@ public class UserInteractionServiceImpl implements UserInteractionService {
         // Şimdiki FilmPointRepository metodumuz OrderByLastUpdDescCreatedDesc şeklinde.
         Pageable pageable = PageRequest.of(0, limit, Sort.by(Sort.Direction.DESC, "lastUpd", "created"));
 
-        List<FilmPoint> ratedFilmPoints = filmPointRepository.findByUserAndFilmPointIsNotNullOrderByLastUpdDescCreatedDesc(user, pageable);
+        List<FilmPoint> ratedFilmPoints = filmPointRepository.findRatedFilmsByUserOrderByLatest(user, pageable);
 
         if (ratedFilmPoints.isEmpty()) {
             return Collections.emptyList();

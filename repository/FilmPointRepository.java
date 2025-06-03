@@ -38,9 +38,9 @@ public interface FilmPointRepository extends JpaRepository<FilmPoint, String> {
 
     /**
      * Belirli bir kullanıcının puan verdiği filmleri (filmPoint alanı NULL olmayan),
-     * son güncelleme (`lastUpd`) veya oluşturulma (`created`) tarihine göre azalan sırada (en yeni önce) getirir.
+     * son güncelleme (`lastUpd`) tarihine göre azalan sırada (en yeni önce) getirir.
      * Pageable parametresi sayesinde sonuçlar limitlenebilir.
      */
-    List<FilmPoint> findByUserAndFilmPointIsNotNullOrderByLastUpdDescCreatedDesc(User user, Pageable pageable);
-    // Metot adını güncelledim: OrderByLastUpdDescCreatedDesc, lastUpd null ise created'a göre sıralar.
+    @Query("SELECT fp FROM FilmPoint fp WHERE fp.user = :user AND fp.filmPoint IS NOT NULL ORDER BY fp.lastUpd DESC, fp.created DESC")
+    List<FilmPoint> findRatedFilmsByUserOrderByLatest(@Param("user") User user, Pageable pageable);
 }
