@@ -1,11 +1,12 @@
 package com.example.moodmovies.service;
 
-import com.example.moodmovies.dto.ListCreateRequestDTO; // Düzeltilmiş DTO adı
 import com.example.moodmovies.dto.FilmListDetailDTO;
 import com.example.moodmovies.dto.FilmListSummaryDTO;
-import com.example.moodmovies.dto.ListUpdateRequestDTO; // Düzeltilmiş DTO adı
 import com.example.moodmovies.dto.FilmToListRequestDTO;
-
+import com.example.moodmovies.dto.ListCreateRequestDTO;
+import com.example.moodmovies.dto.ListUpdateRequestDTO;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import java.util.List;
 
 public interface FilmListService {
@@ -23,4 +24,7 @@ public interface FilmListService {
     FilmListDetailDTO addFilmToList(String userId, String listId, FilmToListRequestDTO filmRequestDTO);
 
     void removeFilmFromList(String userId, String listId, String filmId);
+
+    // YENİ EKLENEN METOT
+    List<FilmListSummaryDTO> getLatestPublicLists(int limit);
 }

@@ -1,8 +1,13 @@
 package com.example.moodmovies.service.impl;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.example.moodmovies.dto.UserDTO;
 import com.example.moodmovies.dto.UserRegistrationRequestDTO;
@@ -15,7 +20,6 @@ import com.example.moodmovies.repository.UserRepository;
 import com.example.moodmovies.service.OAuth2UserInfo;
 import com.example.moodmovies.service.UserService;
 
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -90,6 +94,18 @@ public class UserServiceImpl implements UserService {
                     User savedUser = userRepository.save(newUser);
                     return convertToDTO(savedUser);
                 });
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<UserDTO> getTopReviewers(int limit) {
+        Pageable pageable = PageRequest.of(0, limit);
+        List<Object[]> results = userRepository.findTopReviewers(pageable);
+        
+        return results.stream()
+                .map(result -> (User) result[0])
+                .map(this::convertToDTO) // Zaten var olan helper metot
+                .collect(Collectors.toList());
     }
     
     private String getAuthProviderId(OAuth2UserInfo oauth2UserInfo) {

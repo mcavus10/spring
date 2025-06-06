@@ -55,6 +55,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/auth/login").permitAll()
                         .requestMatchers("/api/v1/auth/register").permitAll()
                         .requestMatchers("/api/v1/auth/refresh-token").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/forum/**").permitAll()
+                        .requestMatchers("/api/v1/forum/**").authenticated()
                         .requestMatchers("/api/v1/auth/**").permitAll() // Kimlik doğrulama endpoint'leri herkese açık
                         .requestMatchers("/h2-console/**").permitAll() // H2 konsolu geliştirme amaçlı açık
                         .requestMatchers("/error").permitAll() // Hata sayfası açık

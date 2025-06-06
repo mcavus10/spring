@@ -1,5 +1,6 @@
 package com.example.moodmovies.service;
 
+import java.util.List;
 import java.util.Optional;
 
 import com.example.moodmovies.dto.UserDTO;
@@ -46,4 +47,12 @@ public interface UserService {
      * @return Kullanıcı bilgileri
      */
     UserDTO processOAuthUserLogin(OAuth2UserInfo oauth2UserInfo);
+
+    /**
+     * En çok film puanlayan kullanıcıları getirir
+     * 
+     * @param limit Dönülecek kullanıcı sayısı
+     * @return En aktif kullanıcılar listesi
+     */
+    List<UserDTO> getTopReviewers(int limit);
 }

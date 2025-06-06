@@ -321,4 +321,33 @@ public class FilmListController {
             throw e; // Global exception handler'a bırak
         }
     }
+
+    /**
+     * Herkese açık ve aktif olan listeleri, oluşturulma tarihine göre en yeniden eskiye doğru getirir.
+     * Anonim kullanıcılar da erişebilir.
+     */
+    @GetMapping("/public/latest")
+    public ResponseEntity<List<FilmListSummaryDTO>> getLatestPublicLists(
+            @RequestParam(defaultValue = "2") int limit) {
+        
+        long startTime = System.currentTimeMillis();
+        
+        log.info("🌍 Herkese açık son listeler istendi - Limit: {}", limit);
+        
+        try {
+            List<FilmListSummaryDTO> publicLists = filmListService.getLatestPublicLists(limit);
+            long duration = System.currentTimeMillis() - startTime;
+            
+            log.info("✅ Herkese açık listeler getirildi - Count: {}, Duration: {}ms", 
+                    publicLists.size(), duration);
+            
+            return ResponseEntity.ok(publicLists);
+            
+        } catch (Exception e) {
+            long duration = System.currentTimeMillis() - startTime;
+            log.error("❌ Herkese açık listeler endpoint hatası - Error: {}, Duration: {}ms", 
+                    e.getMessage(), duration, e);
+            throw e; // Global exception handler'a bırak
+        }
+    }
 }

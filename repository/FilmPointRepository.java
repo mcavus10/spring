@@ -41,6 +41,9 @@ public interface FilmPointRepository extends JpaRepository<FilmPoint, String> {
      * son güncelleme (`lastUpd`) tarihine göre azalan sırada (en yeni önce) getirir.
      * Pageable parametresi sayesinde sonuçlar limitlenebilir.
      */
-    @Query("SELECT fp FROM FilmPoint fp WHERE fp.user = :user AND fp.filmPoint IS NOT NULL ORDER BY fp.lastUpd DESC, fp.created DESC")
+    @Query("SELECT fp FROM FilmPoint fp WHERE fp.user = :user AND fp.filmPoint IS NOT NULL")
     List<FilmPoint> findRatedFilmsByUserOrderByLatest(@Param("user") User user, Pageable pageable);
+    
+    @Query("SELECT fp.filmId, COUNT(fp.pointId) as favoriteCount FROM FilmPoint fp WHERE fp.filmFav = 1 GROUP BY fp.filmId ORDER BY favoriteCount DESC")
+    List<Object[]> findTopFavoritedFilmIds(Pageable pageable);
 }

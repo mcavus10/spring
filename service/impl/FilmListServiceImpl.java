@@ -1,11 +1,11 @@
 package com.example.moodmovies.service.impl;
 
-import com.example.moodmovies.dto.*; // Wildcard import DTO'lar için
+import com.example.moodmovies.dto.*;
 import com.example.moodmovies.exception.FilmNotFoundException;
-import com.example.moodmovies.exception.ResourceNotFoundException; // Bu exception'ı oluşturmalısın
-import com.example.moodmovies.exception.UnauthorizedOperationException; // Bu exception'ı oluşturmalısın
+import com.example.moodmovies.exception.ResourceNotFoundException;
+import com.example.moodmovies.exception.UnauthorizedOperationException;
 import com.example.moodmovies.exception.UserNotFoundException;
-import com.example.moodmovies.model.*; // Wildcard import Modeller için
+import com.example.moodmovies.model.*;
 import com.example.moodmovies.repository.FilmInfoRepository;
 import com.example.moodmovies.repository.FilmListInfoRepository;
 import com.example.moodmovies.repository.FilmListRepository;
@@ -13,6 +13,8 @@ import com.example.moodmovies.repository.UserRepository;
 import com.example.moodmovies.service.FilmListService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable; // DOĞRU IMPORT BU
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -454,18 +456,16 @@ public class FilmListServiceImpl implements FilmListService {
 
     private FilmListSummaryDTO mapToFilmListSummaryDTO(FilmList filmList) {
         try {
-            // filmList.getFilmListInfos().size() direkt film sayısını verir.
-            // Eğer performans kritikse ve çok fazla liste varsa, count sorgusu daha iyi olabilir.
             int filmCount = filmList.getFilmListInfos().size();
-            // Alternatif (daha verimli olabilir ama ek DB sorgusu):
-            // long filmCount = filmListInfoRepository.countByFilmList(filmList);
-
+            UserSummaryDTO ownerDTO = mapToUserSummary(filmList.getUser());
+    
             return FilmListSummaryDTO.builder()
                     .listId(filmList.getListId())
                     .name(filmList.getName())
                     .tag(filmList.getTag())
                     .filmCount(filmCount)
                     .visibility(filmList.getVisible())
+                    .owner(ownerDTO) // owner bilgisi eklendi
                     .build();
                     
         } catch (Exception e) {
@@ -529,5 +529,24 @@ public class FilmListServiceImpl implements FilmListService {
             log.error("❌ Film image URL oluşturma hatası - FilmId: {}, Error: {}", filmId, e.getMessage(), e);
             return null; // Fallback olarak null döndür
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<FilmListSummaryDTO> getLatestPublicLists(int limit) {
+    Pageable pageable = PageRequest.of(0, limit);
+    List<FilmList> publicLists = filmListRepository.findByVisibleAndStatusOrderByCreatedDesc(VISIBILITY_PUBLIC, STATUS_ACTIVE, pageable);
+
+    return publicLists.stream()
+            .map(this::mapToFilmListSummaryDTO)
+            .collect(Collectors.toList());
+    }
+
+    private UserSummaryDTO mapToUserSummary(User user) {
+        if (user == null) return null;
+        return UserSummaryDTO.builder()
+                .id(user.getId())
+                .name(user.getName())
+                .build();
     }
 }

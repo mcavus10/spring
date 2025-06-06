@@ -42,4 +42,6 @@ public interface FilmService {
     List<FilmSummaryDTO> getFilmSuggestions(String query);
 
     BigDecimal getAverageRatingForFilm(String filmId);
+
+    List<FilmSummaryDTO> getTopFavoritedFilms(int limit);
 }

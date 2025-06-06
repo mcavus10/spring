@@ -6,6 +6,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 import org.springframework.security.core.annotation.AuthenticationPrincipal; // Kimlik doğrulaması yapılmış kullanıcıyı almak için
 import org.springframework.http.HttpStatus; // HTTP durum kodları için
 import com.example.moodmovies.security.UserPrincipal; // Kimlik doğrulaması yapılmış kullanıcı nesnesi
@@ -54,5 +56,13 @@ public class UserController {
             // Kullanıcı bulunamazsa veya başka bir hata oluşursa 401 hatası döndür
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
+    }
+
+    /**
+     * En çok film puanlayan kullanıcıları getirir
+     */
+    @GetMapping("/popular/reviewers")
+    public ResponseEntity<List<UserDTO>> getTopReviewers(@RequestParam(defaultValue = "2") int limit) {
+        return ResponseEntity.ok(userService.getTopReviewers(limit));
     }
 }

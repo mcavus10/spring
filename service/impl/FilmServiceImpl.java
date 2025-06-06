@@ -13,12 +13,15 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 /**
@@ -129,4 +132,32 @@ public class FilmServiceImpl implements FilmService {
                 .filter(s -> !s.trim().isEmpty()) // Boş stringleri filtrele (isteğe bağlı)
                 .collect(Collectors.toList());
     }
+
+    @Override
+@Transactional(readOnly = true)
+public List<FilmSummaryDTO> getTopFavoritedFilms(int limit) {
+    Pageable pageable = PageRequest.of(0, limit);
+    List<Object[]> favoritedResults = filmPointRepository.findTopFavoritedFilmIds(pageable);
+
+    if (favoritedResults.isEmpty()) {
+        return Collections.emptyList();
+    }
+
+    List<String> filmIds = favoritedResults.stream()
+            .map(result -> (String) result[0])
+            .collect(Collectors.toList());
+
+    List<FilmInfo> filmInfos = filmInfoRepository.findAllById(filmIds);
+
+    // Orijinal favori sırasını korumak için bir Map kullanalım
+    Map<String, FilmInfo> filmInfoMap = filmInfos.stream()
+            .collect(Collectors.toMap(FilmInfo::getId, film -> film));
+
+    // Orijinal sıralamaya göre DTO listesi oluştur
+    return filmIds.stream()
+            .map(filmInfoMap::get)
+            .filter(Objects::nonNull)
+            .map(this::convertToSummaryDTO) // Zaten var olan helper metot
+            .collect(Collectors.toList());
+}
 }

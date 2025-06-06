@@ -82,4 +82,12 @@ public class FilmController {
         List<FilmSummaryDTO> suggestions = filmService.getFilmSuggestions(query.trim());
         return ResponseEntity.ok(suggestions);
     }
+
+    // controller/FilmController.java
+// ...
+    @GetMapping("/popular/favorites")
+    public ResponseEntity<List<FilmSummaryDTO>> getPopularFavorites(
+        @RequestParam(defaultValue = "4") int limit) {
+    return ResponseEntity.ok(filmService.getTopFavoritedFilms(limit));
+    }
 }

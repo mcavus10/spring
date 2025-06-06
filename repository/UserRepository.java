@@ -3,7 +3,9 @@ package com.example.moodmovies.repository;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import com.example.moodmovies.model.User;
@@ -31,5 +33,11 @@ public interface UserRepository extends JpaRepository<User, String> {
      * @return Bulunan kullanıcılar listesi
      */
     List<User> findByNameContainingIgnoreCase(String partialName);
+
+    /**
+     * En çok puanlama yapan kullanıcıları getiren sorgu
+     */
+    @Query("SELECT u, COUNT(p.pointId) as interactionCount FROM User u JOIN FilmPoint p ON u.id = p.user.id GROUP BY u ORDER BY interactionCount DESC")
+    List<Object[]> findTopReviewers(Pageable pageable);
 
 }

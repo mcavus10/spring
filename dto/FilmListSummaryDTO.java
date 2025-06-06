@@ -6,7 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
-@Builder // Bu anotasyonun olduğundan emin ol
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class FilmListSummaryDTO {
@@ -14,5 +14,6 @@ public class FilmListSummaryDTO {
     private String name;
     private String tag;
     private int filmCount;
-    private Integer visibility; // Bu alanın var olduğundan ve tipinin Integer olduğundan emin ol
+    private Integer visibility;
+    private UserSummaryDTO owner; // Hatanın çözümü için bu satır eklendi
 }
