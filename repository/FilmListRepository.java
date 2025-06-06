@@ -5,6 +5,8 @@ import com.example.moodmovies.model.User;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -26,4 +28,6 @@ public interface FilmListRepository extends JpaRepository<FilmList, String> {
     // Herkese açık ve aktif olan listeleri, oluşturulma tarihine göre en yeniden eskiye doğru getirir.
     List<FilmList> findByVisibleAndStatusOrderByCreatedDesc(Integer visible, Integer status, Pageable pageable);
 
+    @Query("SELECT fl.user.id, COUNT(fl.listId) FROM FilmList fl WHERE fl.user.id IN :userIds AND fl.status = 1 GROUP BY fl.user.id")
+    List<Object[]> countListsByUserIds(@Param("userIds") List<String> userIds);
 }

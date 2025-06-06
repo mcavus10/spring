@@ -20,4 +20,9 @@ public class UserDTO {
     private String providerId; // Dış sağlayıcılar için benzersiz ID
     private LocalDateTime createdDate;
     private LocalDateTime lastUpdatedDate;
+
+    private Long ratingCount;    // Yaptığı puanlama sayısı
+    private Long favoriteCount;  // Favoriye eklediği film sayısı
+    private Long listCount;      // Oluşturduğu liste sayısı
+
 }

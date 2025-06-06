@@ -46,4 +46,12 @@ public interface FilmPointRepository extends JpaRepository<FilmPoint, String> {
     
     @Query("SELECT fp.filmId, COUNT(fp.pointId) as favoriteCount FROM FilmPoint fp WHERE fp.filmFav = 1 GROUP BY fp.filmId ORDER BY favoriteCount DESC")
     List<Object[]> findTopFavoritedFilmIds(Pageable pageable);
+
+    // Belirtilen kullanıcı listesi için her bir kullanıcının toplam puanlama sayısını döndürür.
+    @Query("SELECT fp.user.id, COUNT(fp.pointId) FROM FilmPoint fp WHERE fp.user.id IN :userIds AND fp.filmPoint IS NOT NULL GROUP BY fp.user.id")
+    List<Object[]> countRatingsByUserIds(@Param("userIds") List<String> userIds);
+
+    // Belirtilen kullanıcı listesi için her bir kullanıcının toplam favori sayısını döndürür.
+    @Query("SELECT fp.user.id, COUNT(fp.pointId) FROM FilmPoint fp WHERE fp.user.id IN :userIds AND fp.filmFav = 1 GROUP BY fp.user.id")
+    List<Object[]> countFavoritesByUserIds(@Param("userIds") List<String> userIds);
 }

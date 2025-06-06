@@ -1,6 +1,8 @@
 package com.example.moodmovies.service.impl;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -16,6 +18,8 @@ import com.example.moodmovies.model.Authentication;
 import com.example.moodmovies.model.AuthProvider;
 import com.example.moodmovies.model.User;
 import com.example.moodmovies.repository.AuthenticationRepository;
+import com.example.moodmovies.repository.FilmListRepository;
+import com.example.moodmovies.repository.FilmPointRepository;
 import com.example.moodmovies.repository.UserRepository;
 import com.example.moodmovies.service.OAuth2UserInfo;
 import com.example.moodmovies.service.UserService;
@@ -28,6 +32,8 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final AuthenticationRepository authenticationRepository;
+    private final FilmPointRepository filmPointRepository; // YENİ EKLENDİ
+    private final FilmListRepository filmListRepository; // YENİ EKLENDİ
 
     @Override
     @Transactional
@@ -96,17 +102,42 @@ public class UserServiceImpl implements UserService {
                 });
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<UserDTO> getTopReviewers(int limit) {
-        Pageable pageable = PageRequest.of(0, limit);
-        List<Object[]> results = userRepository.findTopReviewers(pageable);
-        
-        return results.stream()
-                .map(result -> (User) result[0])
-                .map(this::convertToDTO) // Zaten var olan helper metot
-                .collect(Collectors.toList());
+    // YERİNE BU METODU YAPIŞTIR
+@Override
+@Transactional(readOnly = true)
+public List<UserDTO> getTopReviewers(int limit) {
+    Pageable pageable = PageRequest.of(0, limit);
+    
+    // 1. En aktif kullanıcıları bul
+    List<User> topUsers = userRepository.findTopReviewers(pageable).stream()
+            .map(result -> (User) result[0])
+            .collect(Collectors.toList());
+
+    if (topUsers.isEmpty()) {
+        return Collections.emptyList();
     }
+
+    List<String> userIds = topUsers.stream().map(User::getId).collect(Collectors.toList());
+
+    // 2. Bu kullanıcıların tüm istatistiklerini tek seferde ve verimli bir şekilde çek
+    Map<String, Long> ratingCounts = filmPointRepository.countRatingsByUserIds(userIds).stream()
+            .collect(Collectors.toMap(row -> (String) row[0], row -> (Long) row[1]));
+    
+    Map<String, Long> favoriteCounts = filmPointRepository.countFavoritesByUserIds(userIds).stream()
+            .collect(Collectors.toMap(row -> (String) row[0], row -> (Long) row[1]));
+
+    Map<String, Long> listCounts = filmListRepository.countListsByUserIds(userIds).stream()
+            .collect(Collectors.toMap(row -> (String) row[0], row -> (Long) row[1]));
+
+    // 3. User nesnelerini istatistiklerle zenginleştirilmiş UserDTO'lara dönüştür
+    return topUsers.stream().map(user -> {
+        UserDTO dto = convertToDTO(user); // Önce temel DTO oluşturulur
+        dto.setRatingCount(ratingCounts.getOrDefault(user.getId(), 0L));
+        dto.setFavoriteCount(favoriteCounts.getOrDefault(user.getId(), 0L));
+        dto.setListCount(listCounts.getOrDefault(user.getId(), 0L));
+        return dto;
+    }).collect(Collectors.toList());
+}
     
     private String getAuthProviderId(OAuth2UserInfo oauth2UserInfo) {
         // OAuth2UserInfo'dan provider tipini belirle
