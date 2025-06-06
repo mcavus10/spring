@@ -130,4 +130,8 @@ public class JwtTokenProvider {
         }
         return false;
     }
+
+    public Long getJwtExpirationMs() {
+        return jwtExpirationMs;
+    }
 }

@@ -1,18 +1,22 @@
 package com.example.moodmovies.security;
 
-import java.io.IOException;
-
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
-import org.springframework.stereotype.Component;
-
+import com.example.moodmovies.security.UserPrincipal;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.client.web.HttpSessionOAuth2AuthorizationRequestRepository;
+import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
+import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
+import org.springframework.stereotype.Component;
+import org.springframework.web.util.UriComponentsBuilder;
+
+import java.io.IOException;
+import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor
@@ -20,92 +24,67 @@ import lombok.extern.slf4j.Slf4j;
 public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
     private final JwtTokenProvider tokenProvider;
-    
-    @Value("${app.oauth2.authorized-redirect-uri:http://localhost:3000/oauth2/redirect}")
-    private String redirectUri;
-    
-    @Value("${app.cookie.domain:localhost}")
-    private String cookieDomain;
-    
-    @Value("${app.cookie.path:/}")
-    private String cookiePath;
-    
-    @Value("${app.cookie.secure:false}")
-    private boolean cookieSecure;
-    
-    @Value("${app.cookie.http-only:true}")
-    private boolean cookieHttpOnly;
-    
-    @Value("${app.cookie.max-age:86400}")
-    private int cookieMaxAge;
-    
-    protected String determineTargetUrl(Authentication authentication) {
-        return redirectUri;
+    private final CookieService cookieService;
+
+    @Value("${app.oauth2.authorized-redirect-uri}")
+    private String defaultRedirectUri;
+
+    // Bu repository, OAuth akışı başladığında orijinal isteği (redirect_uri dahil) session'da saklar.
+    // Bu sayede başarılı login sonrası nereye döneceğimizi biliriz.
+    private final HttpSessionOAuth2AuthorizationRequestRepository authorizationRequestRepository = new HttpSessionOAuth2AuthorizationRequestRepository();
+
+    @Override
+    public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
+        // Orijinal isteği session'dan alarak hedef URL'yi belirle
+        String targetUrl = determineTargetUrl(request, response, authentication);
+
+        if (response.isCommitted()) {
+            log.debug("Response has already been committed. Unable to redirect to " + targetUrl);
+            return;
+        }
+
+        clearAuthenticationAttributes(request, response);
+
+        // JWT token'larını oluştur
+        UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
+        String accessToken = tokenProvider.generateToken(authentication);
+        String refreshToken = tokenProvider.generateRefreshToken(userPrincipal.getId());
+
+        // Web istemcileri için cookie'leri her zaman set et
+        response.addHeader(HttpHeaders.SET_COOKIE, cookieService.createAccessTokenCookie(accessToken).toString());
+        response.addHeader(HttpHeaders.SET_COOKIE, cookieService.createRefreshTokenCookie(refreshToken).toString());
+        log.debug("JWT and Refresh Token cookies set for the response.");
+
+        // Mobil bir redirect URI ise (custom scheme içeriyorsa) token'ları query'ye ekle
+        if (targetUrl.startsWith("moodiemovies://")) {
+            targetUrl = UriComponentsBuilder.fromUriString(targetUrl)
+                    .queryParam("token", accessToken)
+                    // .queryParam("refresh_token", refreshToken) // Genellikle sadece access token yeterli
+                    .build().toUriString();
+            
+            log.info("OAuth2 Success: Redirecting to mobile custom URI with token in query param.");
+        } else {
+            // Web için token'ları URL'e eklemeden, sadece cookie'lerle yönlendir
+            log.info("OAuth2 Success: Redirecting to web URI. Tokens are in cookies.");
+        }
+
+        getRedirectStrategy().sendRedirect(request, response, targetUrl);
+    }
+
+    protected void clearAuthenticationAttributes(HttpServletRequest request, HttpServletResponse response) {
+        super.clearAuthenticationAttributes(request);
+        // Orijinal isteği session'dan temizle
+        authorizationRequestRepository.removeAuthorizationRequest(request, response);
     }
     
     @Override
-    public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
-            Authentication authentication) throws IOException, ServletException {
+    protected String determineTargetUrl(HttpServletRequest request, HttpServletResponse response, Authentication authentication) {
+        // Orijinal istekteki redirect_uri parametresini al
+        Optional<String> redirectUri = Optional.ofNullable(request.getParameter("redirect_uri"));
         
-        log.info("OAuth2 authentication successful, redirecting to: {}", redirectUri);
-        
-        UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
-        
-        // JWT token üret
-        String token = tokenProvider.generateToken(authentication);
-        String refreshToken = tokenProvider.generateRefreshToken(userPrincipal.getId());
-        
-        // JWT Token için daha güvenli cookie oluşturma
-        addSecureCookie(response, "jwt", token, cookieMaxAge);
-        
-        // Refresh Token için daha güvenli cookie oluşturma
-        addSecureCookie(response, "refresh_token", refreshToken, cookieMaxAge * 7);
-        
-        // Oturum durumunu frontend'e bildirmek için auth_status cookie'si ekleyelim
-        addSecureCookie(response, "auth_status", "authenticated", cookieMaxAge);
-        
-        String targetUrl = determineTargetUrl(authentication);
-        getRedirectStrategy().sendRedirect(request, response, targetUrl);
-    }
-    
-    /**
-     * Daha güvenli cookie oluşturma yöntemi
-     */
-    private void addSecureCookie(HttpServletResponse response, String name, String value, int maxAge) {
-        // Temel cookie nesnesini oluştur
-        Cookie cookie = new Cookie(name, value);
-        cookie.setPath("/");
-        cookie.setMaxAge(maxAge);
-        cookie.setHttpOnly(true); // JavaScript erişimini engelle (güvenlik için)
-        
-        // Development ortamında güvenli cookie'leri kullanabiliriz
-        // Geliştirme sırasında bu yorumu açın: cookie.setSecure(false);
-        // Prod ortamında bu ayar olmalı: cookie.setSecure(true);
-        cookie.setSecure(false); // Geliştirme ortamı için false, prod için true olmalı
-        
-        // Önce standard API ile cookie ekle
-        response.addCookie(cookie);
-        
-        // SameSite=None sadece güvenli (HTTPS) bağlantılarda çalışır
-        // Geliştirme ortamında Lax kullanıyoruz
-        String cookieString = String.format("%s=%s; Path=/; Max-Age=%d; HttpOnly; SameSite=Lax", 
-                          name, value, maxAge);
-        
-        // Aşağıdaki satır prod ortamı için açılmalı:
-        // String cookieString = String.format("%s=%s; Path=/; Max-Age=%d; HttpOnly; Secure; SameSite=None", 
-        //                    name, value, maxAge);
-        
-        // RFC standartlarına uygun olarak her cookie için ayrı header
-        response.addHeader("Set-Cookie", cookieString);
-        
-        // CORS header'ları - çapraz köken isteklerini açıkça izin ver
-        response.setHeader("Access-Control-Allow-Origin", "http://localhost:3000");
-        response.setHeader("Access-Control-Allow-Credentials", "true");
-        response.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-        response.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
-        response.setHeader("Access-Control-Expose-Headers", "Set-Cookie");
-        
-        // Ön-uçuş istekleri için CORS ön bellekleme süresi
-        response.setHeader("Access-Control-Max-Age", "3600");
+        // Eğer istekte bir redirect_uri belirtilmişse onu kullan, yoksa application.properties'teki varsayılanı kullan
+        String targetUrl = redirectUri.orElse(defaultRedirectUri);
+        log.debug("Determined target URL for OAuth2 success: {}", targetUrl);
+        return targetUrl;
     }
 }

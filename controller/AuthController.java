@@ -78,11 +78,12 @@ public class AuthController {
 
         // AuthResponse oluştur ve dön (artık token'ları içermez çünkü cookie olarak gönderildi)
         return ResponseEntity.ok()
-                .headers(headers)
-                .body(AuthResponse.builder()
+        .headers(headers) // Cookie'ler web için gönderilmeye devam ediyor
+        .body(AuthResponse.builder()
                 .tokenType("Bearer")
-                .expiresInMs(86400000L) // 24 saat
+                .expiresInMs(tokenProvider.getJwtExpirationMs()) // Token geçerlilik süresini ekliyoruz
                 .user(userDTO)
+                .accessToken(accessToken) // JSON yanıtına token'ı ekliyoruz
                 .build());
     }
 
@@ -129,11 +130,12 @@ public class AuthController {
         
         // AuthResponse oluştur ve dön
         return ResponseEntity.ok()
-                .headers(headers)
-                .body(AuthResponse.builder()
+        .headers(headers) // Cookie'ler web için gönderilmeye devam ediyor
+        .body(AuthResponse.builder()
                 .tokenType("Bearer")
-                .expiresInMs(86400000L) // 24 saat
+                .expiresInMs(tokenProvider.getJwtExpirationMs()) // Token geçerlilik süresini ekliyoruz
                 .user(registeredUser)
+                .accessToken(accessToken) // JSON yanıtına token'ı ekliyoruz
                 .build());
     }
 
@@ -165,11 +167,12 @@ public class AuthController {
 
         // AuthResponse oluştur ve dön
         return ResponseEntity.ok()
-                .headers(headers)
-                .body(AuthResponse.builder()
+        .headers(headers)
+        .body(AuthResponse.builder()
                 .tokenType("Bearer")
-                .expiresInMs(86400000L)
+                .expiresInMs(tokenProvider.getJwtExpirationMs())
                 .user(userDTO)
+                .accessToken(newAccessToken) // JSON yanıtına YENİ token'ı ekliyoruz
                 .build());
     }
     

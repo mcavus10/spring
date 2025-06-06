@@ -20,4 +20,7 @@ public class AuthResponse {
     
     private Long expiresInMs;
     private UserDTO user;
+
+    // MOBİL İÇİN EKLENEN ALAN
+    private String accessToken;
 }
