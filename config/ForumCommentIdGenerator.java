@@ -16,7 +16,7 @@ public class ForumCommentIdGenerator implements IdentifierGenerator {
         try {
             connection = session.getJdbcConnectionAccess().obtainConnection();
             try (CallableStatement stmt = connection.prepareCall("{call id_generator(?, ?)}")) {
-                stmt.setString(1, "CMT"); // "Comment" için prefix (DB'ye eklediğin "COM" da olabilir, tutarlı olsun)
+                stmt.setString(1, "COM"); 
                 stmt.registerOutParameter(2, Types.VARCHAR);
                 stmt.execute();
                 generatedId = stmt.getString(2);

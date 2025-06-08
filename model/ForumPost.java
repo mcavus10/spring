@@ -48,5 +48,6 @@ public class ForumPost {
 
     @OneToMany(mappedBy = "forumPost", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("created ASC") // Yorumları eskiden yeniye sırala
+    @Builder.Default
     private List<ForumComment> comments = new ArrayList<>();
 }

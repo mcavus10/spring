@@ -16,7 +16,7 @@ public class ForumPostIdGenerator implements IdentifierGenerator {
         try {
             connection = session.getJdbcConnectionAccess().obtainConnection();
             try (CallableStatement stmt = connection.prepareCall("{call id_generator(?, ?)}")) {
-                stmt.setString(1, "PST"); // "Post" için prefix
+                stmt.setString(1, "CON"); 
                 stmt.registerOutParameter(2, Types.VARCHAR);
                 stmt.execute();
                 generatedId = stmt.getString(2);
