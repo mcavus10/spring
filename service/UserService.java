@@ -65,4 +65,12 @@ public interface UserService {
      * @return Güncellenmiş kullanıcı bilgileri
      */
     UserDTO updateUserProfile(String userId, UserUpdateRequestDTO updateRequest);
+
+    /**
+     * Kullanıcının avatarını günceller
+     * @param userId Kullanıcı ID'si
+     * @param avatarId Yeni avatar ID'si
+     * @return Güncellenmiş kullanıcı bilgileri
+     */
+    UserDTO updateUserAvatar(String userId, String avatarId);
 }

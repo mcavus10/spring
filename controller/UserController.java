@@ -13,6 +13,7 @@ import jakarta.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal; // Kimlik doğrulaması yapılmış kullanıcıyı almak için
 import org.springframework.http.HttpStatus; // HTTP durum kodları için
 import com.example.moodmovies.security.UserPrincipal; // Kimlik doğrulaması yapılmış kullanıcı nesnesi
+import com.example.moodmovies.dto.AvatarUpdateRequestDTO;
 
 
 @RestController
@@ -79,5 +80,25 @@ public class UserController {
                                                     @Valid @RequestBody UserUpdateRequestDTO updateRequest) {
         UserDTO updatedUserDTO = userService.updateUserProfile(id, updateRequest);
         return ResponseEntity.ok(updatedUserDTO);
+    }
+
+    /**
+     * Kullanıcının avatarını günceller
+     * @param userPrincipal Kimlik doğrulaması yapılmış kullanıcı
+     * @param updateRequest Avatar güncelleme isteği
+     * @return Güncellenmiş kullanıcı bilgileri
+     */
+    @PutMapping("/me/avatar")
+    public ResponseEntity<UserDTO> updateUserAvatar(@AuthenticationPrincipal UserPrincipal userPrincipal,
+                                                   @Valid @RequestBody AvatarUpdateRequestDTO updateRequest) {
+        if (userPrincipal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        try {
+            UserDTO updatedUserDTO = userService.updateUserAvatar(userPrincipal.getId(), updateRequest.getAvatarId());
+            return ResponseEntity.ok(updatedUserDTO);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+        }
     }
 }

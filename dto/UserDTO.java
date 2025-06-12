@@ -25,4 +25,7 @@ public class UserDTO {
     private Long favoriteCount;  // Favoriye eklediği film sayısı
     private Long listCount;      // Oluşturduğu liste sayısı
 
+    private String avatarId;     // Kullanıcının avatar ID'si
+    private String avatarImageUrl; // Avatar görselinin erişim URL'si
+
 }

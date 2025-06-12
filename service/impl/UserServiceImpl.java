@@ -22,6 +22,7 @@ import com.example.moodmovies.repository.AuthenticationRepository;
 import com.example.moodmovies.repository.FilmListRepository;
 import com.example.moodmovies.repository.FilmPointRepository;
 import com.example.moodmovies.repository.UserRepository;
+import com.example.moodmovies.service.AvatarService;
 import com.example.moodmovies.service.OAuth2UserInfo;
 import com.example.moodmovies.service.UserService;
 
@@ -35,6 +36,7 @@ public class UserServiceImpl implements UserService {
     private final AuthenticationRepository authenticationRepository;
     private final FilmPointRepository filmPointRepository; // YENİ EKLENDİ
     private final FilmListRepository filmListRepository; // YENİ EKLENDİ
+    private final AvatarService avatarService;
 
     @Override
     @Transactional
@@ -155,6 +157,23 @@ public List<UserDTO> getTopReviewers(int limit) {
         return convertToDTO(updatedUser);
     }
     
+    @Override
+    @Transactional
+    public UserDTO updateUserAvatar(String userId, String avatarId) {
+        // Kullanıcıyı bul
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User not found with id: " + userId));
+
+        // AvatarId doğrulaması
+        if (!avatarService.isValidAvatarId(avatarId)) {
+            throw new IllegalArgumentException("Geçersiz avatar ID: " + avatarId);
+        }
+
+        user.setAvatarId(avatarId);
+        User updatedUser = userRepository.save(user);
+        return convertToDTO(updatedUser);
+    }
+    
     private String getAuthProviderId(OAuth2UserInfo oauth2UserInfo) {
         // OAuth2UserInfo'dan provider tipini belirle
         // Bu örnek fonksiyon, OAuth2UserInfo sınıfınızın yapısına göre düzenlenmelidir
@@ -166,6 +185,11 @@ public List<UserDTO> getTopReviewers(int limit) {
         if (user == null) {
             return null;
         }
+        String avatarId = user.getAvatarId();
+        String avatarImageUrl = null;
+        if (avatarId != null) {
+            avatarImageUrl = "/api/v1/avatars/" + avatarId + "/image";
+        }
         return UserDTO.builder()
                 .id(user.getId())
                 .name(user.getName())
@@ -173,6 +197,8 @@ public List<UserDTO> getTopReviewers(int limit) {
                 .authType(user.getAuthentication().getId()) // Authentication tablosundan ID değerini al
                 .createdDate(user.getCreatedDate())
                 .lastUpdatedDate(user.getLastUpdatedDate())
+                .avatarId(avatarId)
+                .avatarImageUrl(avatarImageUrl)
                 .build();
     }
 }

@@ -69,4 +69,7 @@ public class User {
     @UpdateTimestamp
     @Column(name="LAST_UPD", nullable = true)
     private LocalDateTime lastUpdatedDate;
+
+    @Column(name = "AVATAR_ID", length = 15, nullable = true)
+    private String avatarId;
 }
