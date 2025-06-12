@@ -62,6 +62,12 @@ public class SecurityConfig {
                         .requestMatchers("/error").permitAll() // Hata sayfası açık
                         .requestMatchers("/api/v1/interactions/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/films/**").permitAll() // Film listesi, detay ve resim GET isteklerine izin ver
+                        .requestMatchers(HttpMethod.GET, "/api/v1/lists/public/**").permitAll() // Herkese açık listeler
+                        .requestMatchers(HttpMethod.GET, "/api/v1/lists/*/").permitAll() // Liste detayları (public kontrol service'de yapılır)
+                        .requestMatchers(HttpMethod.GET, "/api/v1/users/popular/**").permitAll() // Popüler kullanıcılar
+                        .requestMatchers(HttpMethod.GET, "/api/v1/users/*").permitAll() // Kullanıcı profilleri
+                        .requestMatchers("/api/v1/lists/**").authenticated() // Diğer liste işlemleri
+                        .requestMatchers("/api/v1/users/**").authenticated() // Diğer kullanıcı işlemleri
                         .anyRequest().authenticated() // Diğer tüm istekler doğrulama gerektirir
                 )
                 // OAuth2 yapılandırması

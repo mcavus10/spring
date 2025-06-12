@@ -37,6 +37,12 @@ public interface FilmPointRepository extends JpaRepository<FilmPoint, String> {
     Optional<Double> findAverageRatingByFilmId(@Param("filmId") String filmId);
 
     /**
+     * Belirli bir film ID'sine sahip filmin toplam puan sayısını hesaplar.
+     */
+    @Query("SELECT COUNT(fp.filmPoint) FROM FilmPoint fp WHERE fp.filmId = :filmId AND fp.filmPoint IS NOT NULL")
+    Long countRatingsByFilmId(@Param("filmId") String filmId);
+
+    /**
      * Belirli bir kullanıcının puan verdiği filmleri (filmPoint alanı NULL olmayan),
      * son güncelleme (`lastUpd`) tarihine göre azalan sırada (en yeni önce) getirir.
      * Pageable parametresi sayesinde sonuçlar limitlenebilir.
@@ -54,4 +60,8 @@ public interface FilmPointRepository extends JpaRepository<FilmPoint, String> {
     // Belirtilen kullanıcı listesi için her bir kullanıcının toplam favori sayısını döndürür.
     @Query("SELECT fp.user.id, COUNT(fp.pointId) FROM FilmPoint fp WHERE fp.user.id IN :userIds AND fp.filmFav = 1 GROUP BY fp.user.id")
     List<Object[]> countFavoritesByUserIds(@Param("userIds") List<String> userIds);
+
+    // Belirli bir filme yapılan tüm yorumları ve puanlamaları getirir (comment veya rating olan kayıtlar)
+    @Query("SELECT fp FROM FilmPoint fp WHERE fp.filmId = :filmId AND (fp.comment IS NOT NULL OR fp.filmPoint IS NOT NULL) ORDER BY fp.created DESC")
+    List<FilmPoint> findAllByFilmIdAndCommentOrRatingExists(@Param("filmId") String filmId);
 }

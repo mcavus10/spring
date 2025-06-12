@@ -5,6 +5,7 @@ import java.util.Optional;
 
 import com.example.moodmovies.dto.UserDTO;
 import com.example.moodmovies.dto.UserRegistrationRequestDTO;
+import com.example.moodmovies.dto.UserUpdateRequestDTO;
 
 public interface UserService {
     
@@ -55,4 +56,13 @@ public interface UserService {
      * @return En aktif kullanıcılar listesi
      */
     List<UserDTO> getTopReviewers(int limit);
+
+    /**
+     * Kullanıcının profil bilgilerini günceller
+     * 
+     * @param userId Güncellenecek kullanıcının ID'si
+     * @param updateRequest Güncelleme bilgileri
+     * @return Güncellenmiş kullanıcı bilgileri
+     */
+    UserDTO updateUserProfile(String userId, UserUpdateRequestDTO updateRequest);
 }

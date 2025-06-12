@@ -1,8 +1,10 @@
 package com.example.moodmovies.service.impl;
 
+import com.example.moodmovies.dto.FilmReviewDTO;
 import com.example.moodmovies.dto.FilmSummaryDTO;
 import com.example.moodmovies.dto.RatedFilmDTO;
 import com.example.moodmovies.dto.UserFilmInteractionDTO;
+import com.example.moodmovies.dto.UserSummaryDTO;
 import com.example.moodmovies.exception.FilmNotFoundException;
 import com.example.moodmovies.exception.UserNotFoundException;
 import com.example.moodmovies.model.FilmInfo;
@@ -43,7 +45,7 @@ public class UserInteractionServiceImpl implements UserInteractionService {
     private static final int MAX_RATING = 10;
 
     @Override
-    public UserFilmInteractionDTO rateFilm(String userId, String filmId, int rating) {
+    public UserFilmInteractionDTO rateFilm(String userId, String filmId, int rating, String comment) {
         if (rating < MIN_RATING || rating > MAX_RATING) {
             throw new IllegalArgumentException("Puan " + MIN_RATING + " ile " + MAX_RATING + " arasında olmalıdır.");
         }
@@ -59,8 +61,14 @@ public class UserInteractionServiceImpl implements UserInteractionService {
                 .orElseGet(() -> FilmPoint.builder().user(user).filmId(filmId).build());
 
         filmPoint.setFilmPoint(rating);
+        filmPoint.setComment(comment);
         filmPointRepository.save(filmPoint);
-        log.info("Kullanıcı {} filme {} puan verdi: {}", userId, filmId, rating);
+        
+        if (comment != null && !comment.trim().isEmpty()) {
+            log.info("Kullanıcı {} filme {} puan verdi: {} ve yorum: '{}'", userId, filmId, rating, comment.substring(0, Math.min(comment.length(), 50)) + "...");
+        } else {
+            log.info("Kullanıcı {} filme {} puan verdi: {}", userId, filmId, rating);
+        }
 
         return getUserFilmInteractionStatus(userId, filmId);
     }
@@ -85,6 +93,26 @@ public class UserInteractionServiceImpl implements UserInteractionService {
     }
 
     @Override
+    public UserFilmInteractionDTO addComment(String userId, String filmId, String comment) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("Kullanıcı bulunamadı: " + userId));
+
+        if (!filmInfoRepository.existsById(filmId)) {
+            throw new FilmNotFoundException("Film bulunamadı: " + filmId);
+        }
+
+        FilmPoint filmPoint = filmPointRepository.findByUserAndFilmId(user, filmId)
+                .orElseGet(() -> FilmPoint.builder().user(user).filmId(filmId).build());
+
+        filmPoint.setComment(comment);
+        filmPointRepository.save(filmPoint);
+        log.info("Kullanıcı {} filme {} yorum ekledi: '{}'", userId, filmId, 
+                comment != null ? comment.substring(0, Math.min(comment.length(), 50)) + "..." : "null");
+
+        return getUserFilmInteractionStatus(userId, filmId);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public UserFilmInteractionDTO getUserFilmInteractionStatus(String userId, String filmId) {
         User user = userRepository.findById(userId)
@@ -100,12 +128,15 @@ public class UserInteractionServiceImpl implements UserInteractionService {
 
         FilmPoint filmPoint = filmPointRepository.findByUserAndFilmId(user, filmId).orElse(null);
         BigDecimal averageRating = filmService.getAverageRatingForFilm(filmId); // Bu metot film yoksa hata fırlatır.
+        Long totalRatings = filmPointRepository.countRatingsByFilmId(filmId); // Toplam puan sayısını al
 
         return UserFilmInteractionDTO.builder()
                 .filmId(filmId)
                 .userRating(filmPoint != null ? filmPoint.getFilmPoint() : null)
+                .userComment(filmPoint != null ? filmPoint.getComment() : null)
                 .isFavorite(filmPoint != null && filmPoint.getFilmFav() != null && filmPoint.getFilmFav() == 1)
                 .averageRating(averageRating)
+                .totalRatings(totalRatings) // Toplam puan sayısını ekle
                 // .isInWatchlist(false) // Bu alan "izleme listesi" özelliğiyle gelecek
                 .build();
     }
@@ -179,11 +210,39 @@ public class UserInteractionServiceImpl implements UserInteractionService {
                     return RatedFilmDTO.builder()
                             .film(filmSummary)
                             .userRating(fp.getFilmPoint())
+                            .userComment(fp.getComment())
                             // En güncel tarihi al: lastUpd doluysa onu, değilse created'ı kullan
                             .ratedDate(fp.getLastUpd() != null ? fp.getLastUpd() : fp.getCreated())
                             .build();
                 })
                 .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<FilmReviewDTO> getFilmReviews(String filmId) {
+        if (!filmInfoRepository.existsById(filmId)) {
+            throw new FilmNotFoundException("Film bulunamadı: " + filmId);
+        }
+
+        // Bu filme yapılan tüm yorumları ve puanlamaları getir (comment veya rating olan kayıtlar)
+        List<FilmPoint> filmPoints = filmPointRepository.findAllByFilmIdAndCommentOrRatingExists(filmId);
+
+        return filmPoints.stream()
+                .filter(fp -> fp.getComment() != null || fp.getFilmPoint() != null)
+                .map(fp -> FilmReviewDTO.builder()
+                        .id(fp.getPointId())
+                        .user(UserSummaryDTO.builder()
+                                .id(fp.getUser().getId())
+                                .name(fp.getUser().getName())
+                                .build())
+                        .rating(fp.getFilmPoint())
+                        .text(fp.getComment())
+                        .created(fp.getCreated())
+                        .likes(0) // İleride beğeni sistemi için
+                        .build())
+                .sorted((r1, r2) -> r2.getCreated().compareTo(r1.getCreated())) // En yeni önce
                 .collect(Collectors.toList());
     }
 

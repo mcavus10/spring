@@ -14,5 +14,6 @@ import java.time.LocalDateTime;
 public class RatedFilmDTO {
     private FilmSummaryDTO film; // Filmin özet bilgileri (id, title, imageUrl)
     private Integer userRating;    // Kullanıcının verdiği puan
+    private String userComment;    // Kullanıcının yaptığı yorum
     private LocalDateTime ratedDate;   // Puanlama/son güncelleme tarihi
 }

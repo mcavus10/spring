@@ -1,5 +1,6 @@
 package com.example.moodmovies.service;
 
+import com.example.moodmovies.dto.FilmReviewDTO;
 import com.example.moodmovies.dto.FilmSummaryDTO;
 import com.example.moodmovies.dto.RatedFilmDTO;
 import com.example.moodmovies.dto.UserFilmInteractionDTO;
@@ -14,9 +15,10 @@ public interface UserInteractionService {
      * @param userId Kullanıcı ID'si
      * @param filmId Film ID'si
      * @param rating Verilen puan
+     * @param comment Verilen yorum (isteğe bağlı)
      * @return Filmin güncel kullanıcı etkileşim durumu
      */
-    UserFilmInteractionDTO rateFilm(String userId, String filmId, int rating);
+    UserFilmInteractionDTO rateFilm(String userId, String filmId, int rating, String comment);
 
     /**
      * Bir kullanıcının bir film için favori durumunu değiştirir (ekler/kaldırır).
@@ -25,6 +27,15 @@ public interface UserInteractionService {
      * @return Filmin güncel kullanıcı etkileşim durumu
      */
     UserFilmInteractionDTO toggleFavorite(String userId, String filmId);
+
+    /**
+     * Bir kullanıcının bir filme sadece yorum eklemesini sağlar (puan vermeden).
+     * @param userId Kullanıcı ID'si
+     * @param filmId Film ID'si
+     * @param comment Yorum metni
+     * @return Filmin güncel kullanıcı etkileşim durumu
+     */
+    UserFilmInteractionDTO addComment(String userId, String filmId, String comment);
 
     /**
      * Bir kullanıcının belirli bir filmle olan etkileşim durumunu (puanı, favori mi)
@@ -49,4 +60,11 @@ public interface UserInteractionService {
      * @return Puanlanmış filmlerin DTO listesi
      */
     List<RatedFilmDTO> getLatestRatedFilms(String userId, int limit);
+
+    /**
+     * Belirli bir filme yapılan tüm yorumları getirir.
+     * @param filmId Film ID'si
+     * @return Film yorumlarının DTO listesi
+     */
+    List<FilmReviewDTO> getFilmReviews(String filmId);
 }

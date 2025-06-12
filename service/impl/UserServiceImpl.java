@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.example.moodmovies.dto.UserDTO;
 import com.example.moodmovies.dto.UserRegistrationRequestDTO;
+import com.example.moodmovies.dto.UserUpdateRequestDTO;
 import com.example.moodmovies.exception.UserNotFoundException;
 import com.example.moodmovies.model.Authentication;
 import com.example.moodmovies.model.AuthProvider;
@@ -138,6 +139,21 @@ public List<UserDTO> getTopReviewers(int limit) {
         return dto;
     }).collect(Collectors.toList());
 }
+    
+    @Override
+    @Transactional
+    public UserDTO updateUserProfile(String userId, UserUpdateRequestDTO updateRequest) {
+        // Kullanıcıyı bul
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User not found with id: " + userId));
+        
+        // İsmi güncelle
+        user.setName(updateRequest.getName());
+        
+        // Kullanıcıyı kaydet ve güncellenmiş DTO döndür
+        User updatedUser = userRepository.save(user);
+        return convertToDTO(updatedUser);
+    }
     
     private String getAuthProviderId(OAuth2UserInfo oauth2UserInfo) {
         // OAuth2UserInfo'dan provider tipini belirle

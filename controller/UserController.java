@@ -1,6 +1,7 @@
 package com.example.moodmovies.controller;
 
 import com.example.moodmovies.dto.UserDTO;
+import com.example.moodmovies.dto.UserUpdateRequestDTO;
 import com.example.moodmovies.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -8,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+import jakarta.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal; // Kimlik doğrulaması yapılmış kullanıcıyı almak için
 import org.springframework.http.HttpStatus; // HTTP durum kodları için
 import com.example.moodmovies.security.UserPrincipal; // Kimlik doğrulaması yapılmış kullanıcı nesnesi
@@ -64,5 +66,18 @@ public class UserController {
     @GetMapping("/popular/reviewers")
     public ResponseEntity<List<UserDTO>> getTopReviewers(@RequestParam(defaultValue = "2") int limit) {
         return ResponseEntity.ok(userService.getTopReviewers(limit));
+    }
+
+    /**
+     * Kullanıcının profil bilgilerini günceller
+     * @param id Güncellenecek kullanıcının ID'si
+     * @param updateRequest Güncelleme bilgileri
+     * @return Güncellenmiş kullanıcı bilgileri
+     */
+    @PutMapping("/{id}")
+    public ResponseEntity<UserDTO> updateUserProfile(@PathVariable String id, 
+                                                    @Valid @RequestBody UserUpdateRequestDTO updateRequest) {
+        UserDTO updatedUserDTO = userService.updateUserProfile(id, updateRequest);
+        return ResponseEntity.ok(updatedUserDTO);
     }
 }

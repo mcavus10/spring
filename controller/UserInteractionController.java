@@ -1,6 +1,8 @@
 package com.example.moodmovies.controller;
 
+import com.example.moodmovies.dto.CommentRequestDTO;
 import com.example.moodmovies.dto.FilmRatingRequestDTO;
+import com.example.moodmovies.dto.FilmReviewDTO;
 import com.example.moodmovies.dto.FilmSummaryDTO;
 import com.example.moodmovies.dto.RatedFilmDTO;
 import com.example.moodmovies.dto.UserFilmInteractionDTO;
@@ -27,7 +29,12 @@ public class UserInteractionController {
             @AuthenticationPrincipal UserPrincipal currentUser,
             @PathVariable String filmId,
             @Valid @RequestBody FilmRatingRequestDTO ratingRequest) {
-        UserFilmInteractionDTO updatedInteraction = userInteractionService.rateFilm(currentUser.getId(), filmId, ratingRequest.getRating());
+        UserFilmInteractionDTO updatedInteraction = userInteractionService.rateFilm(
+                currentUser.getId(), 
+                filmId, 
+                ratingRequest.getRating(),
+                ratingRequest.getComment()
+        );
         return ResponseEntity.ok(updatedInteraction);
     }
 
@@ -36,6 +43,19 @@ public class UserInteractionController {
             @AuthenticationPrincipal UserPrincipal currentUser,
             @PathVariable String filmId) {
         UserFilmInteractionDTO updatedInteraction = userInteractionService.toggleFavorite(currentUser.getId(), filmId);
+        return ResponseEntity.ok(updatedInteraction);
+    }
+
+    @PostMapping("/films/{filmId}/comment")
+    public ResponseEntity<UserFilmInteractionDTO> addComment(
+            @AuthenticationPrincipal UserPrincipal currentUser,
+            @PathVariable String filmId,
+            @Valid @RequestBody CommentRequestDTO commentRequest) {
+        UserFilmInteractionDTO updatedInteraction = userInteractionService.addComment(
+                currentUser.getId(), 
+                filmId, 
+                commentRequest.getComment()
+        );
         return ResponseEntity.ok(updatedInteraction);
     }
 
@@ -65,5 +85,11 @@ public class UserInteractionController {
         }
         List<RatedFilmDTO> latestRatedFilms = userInteractionService.getLatestRatedFilms(currentUser.getId(), limit);
         return ResponseEntity.ok(latestRatedFilms);
+    }
+
+    @GetMapping("/reviews/film/{filmId}")
+    public ResponseEntity<List<FilmReviewDTO>> getFilmReviews(@PathVariable String filmId) {
+        List<FilmReviewDTO> reviews = userInteractionService.getFilmReviews(filmId);
+        return ResponseEntity.ok(reviews);
     }
 }

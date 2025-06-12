@@ -49,6 +49,9 @@ public class FilmPoint {
     @Column(name = "FILM_FAV") // 0: Favori değil, 1: Favori
     private Integer filmFav;   // Kullanıcı sadece puanlayıp favorilemeyebilir (NULL olabilir)
 
+    @Column(name = "COMMENT", length = 255) // Kullanıcının film hakkındaki yorumu
+    private String comment;    // Yorum isteğe bağlı (NULL olabilir)
+
     @CreationTimestamp
     @Column(name = "CREATED", nullable = false, updatable = false)
     private LocalDateTime created;
