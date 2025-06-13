@@ -21,6 +21,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import jakarta.persistence.Transient;
 
 @Entity
 @Table(name ="MOODMOVIES_USERS" , uniqueConstraints = {
@@ -72,4 +73,14 @@ public class User {
 
     @Column(name = "AVATAR_ID", length = 15, nullable = true)
     private String avatarId;
+
+    // --- İSTATİSTİK ALANLARI (@Transient) ---
+    @Transient
+    private Long ratingCount = 0L;
+
+    @Transient
+    private Long favoriteCount = 0L;
+
+    @Transient
+    private Long listCount = 0L;
 }

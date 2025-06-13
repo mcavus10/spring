@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.List;
 
 @Data
 @Builder
@@ -16,4 +17,7 @@ public class FilmListSummaryDTO {
     private int filmCount;
     private Integer visibility;
     private UserSummaryDTO owner; // Hatanın çözümü için bu satır eklendi
+    
+    // Listedeki ilk birkaç filmin özetini tutacak
+    private List<FilmSummaryDTO> films;
 }

@@ -9,4 +9,5 @@ public class UserSummaryDTO {
     private String id;
     private String name;
     // private String profilePictureUrl; // Opsiyonel
+    private String avatarImageUrl;
 }

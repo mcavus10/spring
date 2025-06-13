@@ -104,6 +104,8 @@ public class OAuth2UserServiceImpl extends DefaultOAuth2UserService {
                     newUser.setProviderId(oAuth2UserInfo.getProviderId());
                     newUser.setName(oAuth2UserInfo.getName());
                     newUser.setEmail(oAuth2UserInfo.getEmail());
+                    // Varsayılan avatar ata
+                    newUser.setAvatarId("0000-000001-AVT"); // Varsayılan avatar ID'si
                     
                     log.info("Created new user with OAuth2: {}", newUser.getEmail());
                     User savedUser = userRepository.save(newUser);

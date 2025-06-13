@@ -40,4 +40,7 @@ public interface UserRepository extends JpaRepository<User, String> {
     @Query("SELECT u, COUNT(p.pointId) as interactionCount FROM User u JOIN FilmPoint p ON u.id = p.user.id GROUP BY u ORDER BY interactionCount DESC")
     List<Object[]> findTopReviewers(Pageable pageable);
 
+    // YENİ METOT: Avatar'ı olmayan kullanıcıları döndürür
+    List<User> findByAvatarIdIsNull();
+
 }

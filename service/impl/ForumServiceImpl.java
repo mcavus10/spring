@@ -11,6 +11,7 @@ import com.example.moodmovies.repository.ForumCommentRepository;
 import com.example.moodmovies.repository.ForumPostRepository;
 import com.example.moodmovies.repository.UserRepository;
 import com.example.moodmovies.service.ForumService;
+import com.example.moodmovies.service.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -29,6 +30,7 @@ public class ForumServiceImpl implements ForumService {
     private final ForumPostRepository forumPostRepository;
     private final ForumCommentRepository forumCommentRepository;
     private final UserRepository userRepository;
+    private final UserMapper userMapper;
 
     @Override
     @Transactional
@@ -117,17 +119,12 @@ public class ForumServiceImpl implements ForumService {
     
     // --- MAPPING HELPERS ---
 
-    private UserSummaryDTO mapToUserSummary(User user) {
-        if (user == null) return null;
-        return UserSummaryDTO.builder().id(user.getId()).name(user.getName()).build();
-    }
-    
     private ForumPostSummaryDTO mapToSummaryDTO(ForumPost post, long commentCount) {
         return ForumPostSummaryDTO.builder()
                 .id(post.getId())
                 .title(post.getTitle())
                 .tag(post.getTag())
-                .author(mapToUserSummary(post.getUser()))
+                .author(userMapper.toUserSummaryDTO(post.getUser()))
                 .commentCount(commentCount)
                 .created(post.getCreated())
                 .build();
@@ -137,7 +134,7 @@ public class ForumServiceImpl implements ForumService {
         return ForumCommentDTO.builder()
                 .id(comment.getId())
                 .comment(comment.getComment())
-                .author(mapToUserSummary(comment.getUser()))
+                .author(userMapper.toUserSummaryDTO(comment.getUser()))
                 .created(comment.getCreated())
                 .lastUpd(comment.getLastUpd())
                 .build();
@@ -153,7 +150,7 @@ public class ForumServiceImpl implements ForumService {
                 .title(post.getTitle())
                 .tag(post.getTag())
                 .context(post.getContext())
-                .author(mapToUserSummary(post.getUser()))
+                .author(userMapper.toUserSummaryDTO(post.getUser()))
                 .created(post.getCreated())
                 .lastUpd(post.getLastUpd())
                 .comments(commentDTOs)

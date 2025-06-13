@@ -7,6 +7,7 @@ import com.example.moodmovies.service.AvatarService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -19,10 +20,7 @@ public class AvatarServiceImpl implements AvatarService {
     @Override
     public List<AvatarDTO> getAllAvatars() {
         return avatarRepository.findAll().stream()
-                .map(avatar -> AvatarDTO.builder()
-                        .avatarId(avatar.getAvatarId())
-                        .imageUrl("/api/v1/avatars/" + avatar.getAvatarId() + "/image")
-                        .build())
+                .map(this::convertToDto)
                 .collect(Collectors.toList());
     }
 
@@ -41,5 +39,14 @@ public class AvatarServiceImpl implements AvatarService {
     @Override
     public boolean isValidAvatarId(String avatarId) {
         return avatarRepository.existsById(avatarId);
+    }
+
+    private AvatarDTO convertToDto(Avatar avatar) {
+        String base64 = Base64.getEncoder().encodeToString(avatar.getImageByte());
+        String dataUrl = "data:image/jpeg;base64," + base64;
+        return AvatarDTO.builder()
+                .avatarId(avatar.getAvatarId())
+                .base64Image(dataUrl)
+                .build();
     }
 } 

@@ -11,5 +11,5 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class AvatarDTO {
     private String avatarId;
-    private String imageUrl;
+    private String base64Image;
 } 

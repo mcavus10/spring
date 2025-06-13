@@ -13,7 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-// import org.springframework.web.bind.annotation.RequestParam; // Zaten yukarıda var
+
 
 import java.util.List;
 
@@ -91,5 +91,18 @@ public class UserInteractionController {
     public ResponseEntity<List<FilmReviewDTO>> getFilmReviews(@PathVariable String filmId) {
         List<FilmReviewDTO> reviews = userInteractionService.getFilmReviews(filmId);
         return ResponseEntity.ok(reviews);
+    }
+
+    @GetMapping("/public/favorites/{userId}")
+    public ResponseEntity<List<FilmSummaryDTO>> getPublicFavoriteFilms(@PathVariable String userId) {
+        return ResponseEntity.ok(userInteractionService.getUserFavoriteFilms(userId));
+    }
+
+    @GetMapping("/public/ratings/{userId}")
+    public ResponseEntity<List<RatedFilmDTO>> getPublicRatedFilms(@PathVariable String userId,
+            @RequestParam(value = "limit", defaultValue = "5") int limit) {
+        if (limit <= 0) limit = 1;
+        else if (limit > 20) limit = 20;
+        return ResponseEntity.ok(userInteractionService.getLatestRatedFilms(userId, limit));
     }
 }

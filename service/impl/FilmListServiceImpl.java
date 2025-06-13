@@ -458,6 +458,22 @@ public class FilmListServiceImpl implements FilmListService {
         try {
             int filmCount = filmList.getFilmListInfos().size();
             UserSummaryDTO ownerDTO = mapToUserSummary(filmList.getUser());
+
+            // ------------------ Yeni Mantık ------------------
+            List<FilmSummaryDTO> filmPreviews = Collections.emptyList();
+            if (filmCount > 0) {
+                List<String> filmIdsForPreview = filmList.getFilmListInfos().stream()
+                        .map(info -> info.getId().getFilmId())
+                        .limit(3)
+                        .collect(Collectors.toList());
+
+                if (!filmIdsForPreview.isEmpty()) {
+                    filmPreviews = filmInfoRepository.findAllById(filmIdsForPreview).stream()
+                            .map(this::convertToFilmSummaryDTO)
+                            .collect(Collectors.toList());
+                }
+            }
+            // --------------------------------------------------
     
             return FilmListSummaryDTO.builder()
                     .listId(filmList.getListId())
@@ -466,6 +482,7 @@ public class FilmListServiceImpl implements FilmListService {
                     .filmCount(filmCount)
                     .visibility(filmList.getVisible())
                     .owner(ownerDTO) // owner bilgisi eklendi
+                    .films(filmPreviews)
                     .build();
                     
         } catch (Exception e) {
@@ -547,6 +564,7 @@ public class FilmListServiceImpl implements FilmListService {
         return UserSummaryDTO.builder()
                 .id(user.getId())
                 .name(user.getName())
+                .avatarImageUrl(user.getAvatarId() != null ? "/api/v1/avatars/" + user.getAvatarId() + "/image" : null)
                 .build();
     }
 }

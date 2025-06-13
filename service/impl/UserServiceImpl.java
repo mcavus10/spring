@@ -25,6 +25,7 @@ import com.example.moodmovies.repository.UserRepository;
 import com.example.moodmovies.service.AvatarService;
 import com.example.moodmovies.service.OAuth2UserInfo;
 import com.example.moodmovies.service.UserService;
+import com.example.moodmovies.service.mapper.UserMapper;
 
 import lombok.RequiredArgsConstructor;
 
@@ -37,28 +38,42 @@ public class UserServiceImpl implements UserService {
     private final FilmPointRepository filmPointRepository; // YENİ EKLENDİ
     private final FilmListRepository filmListRepository; // YENİ EKLENDİ
     private final AvatarService avatarService;
+    private final UserMapper userMapper;
 
     @Override
     @Transactional
     public Optional<UserDTO> findByEmail(String email) {
-        Optional<User> userOptional = userRepository.findByEmail(email);
-
-        return userOptional.map(this::convertToDTO);
+        return userRepository.findByEmail(email).map(userMapper::toUserDTO);
     }
 
     @Override
     @Transactional
     public Optional<UserDTO> findByProviderId(String providerId) {
-        Optional<User> userOptional = userRepository.findByProviderId(providerId);
-        return userOptional.map(this::convertToDTO);
+        return userRepository.findByProviderId(providerId).map(userMapper::toUserDTO);
     }
     
     @Override
     public UserDTO findUserById(String id) {
         User user = userRepository.findById(id)
-        .orElseThrow(()-> new UserNotFoundException("User not found with id: "+id));
+                .orElseThrow(() -> new UserNotFoundException("User not found with id: " + id));
 
-        return convertToDTO(user);
+        // İstatistikleri hesapla
+        List<String> singleton = Collections.singletonList(id);
+
+        Long ratingCnt = filmPointRepository.countRatingsByUserIds(singleton).stream()
+                .findFirst().map(row -> ((Number) row[1]).longValue()).orElse(0L);
+
+        Long favoriteCnt = filmPointRepository.countFavoritesByUserIds(singleton).stream()
+                .findFirst().map(row -> ((Number) row[1]).longValue()).orElse(0L);
+
+        Long listCnt = filmListRepository.countListsByUserIds(singleton).stream()
+                .findFirst().map(row -> ((Number) row[1]).longValue()).orElse(0L);
+
+        user.setRatingCount(ratingCnt);
+        user.setFavoriteCount(favoriteCnt);
+        user.setListCount(listCnt);
+
+        return userMapper.toUserDTO(user);
     }
 
     @Override
@@ -76,9 +91,11 @@ public class UserServiceImpl implements UserService {
         
         newUser.setAuthentication(localAuth);
         newUser.setProviderId(null); // LOCAL için provider ID yok
+        // Varsayılan avatar ata
+        newUser.setAvatarId("0000-000001-AVT"); // Varsayılan avatar ID'si
         
         User savedUser = userRepository.save(newUser);
-        return convertToDTO(savedUser);
+        return userMapper.toUserDTO(savedUser);
     }
 
     @Override
@@ -101,7 +118,7 @@ public class UserServiceImpl implements UserService {
                     newUser.setProviderId(oauth2UserInfo.getProviderId());
                     
                     User savedUser = userRepository.save(newUser);
-                    return convertToDTO(savedUser);
+                    return userMapper.toUserDTO(savedUser);
                 });
     }
 
@@ -134,7 +151,7 @@ public List<UserDTO> getTopReviewers(int limit) {
 
     // 3. User nesnelerini istatistiklerle zenginleştirilmiş UserDTO'lara dönüştür
     return topUsers.stream().map(user -> {
-        UserDTO dto = convertToDTO(user); // Önce temel DTO oluşturulur
+        UserDTO dto = userMapper.toUserDTO(user);
         dto.setRatingCount(ratingCounts.getOrDefault(user.getId(), 0L));
         dto.setFavoriteCount(favoriteCounts.getOrDefault(user.getId(), 0L));
         dto.setListCount(listCounts.getOrDefault(user.getId(), 0L));
@@ -154,7 +171,7 @@ public List<UserDTO> getTopReviewers(int limit) {
         
         // Kullanıcıyı kaydet ve güncellenmiş DTO döndür
         User updatedUser = userRepository.save(user);
-        return convertToDTO(updatedUser);
+        return userMapper.toUserDTO(updatedUser);
     }
     
     @Override
@@ -171,7 +188,7 @@ public List<UserDTO> getTopReviewers(int limit) {
 
         user.setAvatarId(avatarId);
         User updatedUser = userRepository.save(user);
-        return convertToDTO(updatedUser);
+        return userMapper.toUserDTO(updatedUser);
     }
     
     private String getAuthProviderId(OAuth2UserInfo oauth2UserInfo) {
@@ -179,26 +196,5 @@ public List<UserDTO> getTopReviewers(int limit) {
         // Bu örnek fonksiyon, OAuth2UserInfo sınıfınızın yapısına göre düzenlenmelidir
         // Şu an varsayılan olarak GOOGLE dönüyor
         return AuthProvider.GOOGLE;
-    }
-
-    private UserDTO convertToDTO(User user) {
-        if (user == null) {
-            return null;
-        }
-        String avatarId = user.getAvatarId();
-        String avatarImageUrl = null;
-        if (avatarId != null) {
-            avatarImageUrl = "/api/v1/avatars/" + avatarId + "/image";
-        }
-        return UserDTO.builder()
-                .id(user.getId())
-                .name(user.getName())
-                .email(user.getEmail())
-                .authType(user.getAuthentication().getId()) // Authentication tablosundan ID değerini al
-                .createdDate(user.getCreatedDate())
-                .lastUpdatedDate(user.getLastUpdatedDate())
-                .avatarId(avatarId)
-                .avatarImageUrl(avatarImageUrl)
-                .build();
     }
 }

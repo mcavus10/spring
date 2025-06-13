@@ -15,6 +15,7 @@ import com.example.moodmovies.repository.FilmPointRepository;
 import com.example.moodmovies.repository.UserRepository;
 import com.example.moodmovies.service.FilmService;
 import com.example.moodmovies.service.UserInteractionService;
+import com.example.moodmovies.service.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -40,6 +41,7 @@ public class UserInteractionServiceImpl implements UserInteractionService {
     private final FilmPointRepository filmPointRepository;
     private final FilmInfoRepository filmInfoRepository;
     private final FilmService filmService; // Ortalama puanı almak için
+    private final UserMapper userMapper;
 
     private static final int MIN_RATING = 1;
     private static final int MAX_RATING = 10;
@@ -233,10 +235,7 @@ public class UserInteractionServiceImpl implements UserInteractionService {
                 .filter(fp -> fp.getComment() != null || fp.getFilmPoint() != null)
                 .map(fp -> FilmReviewDTO.builder()
                         .id(fp.getPointId())
-                        .user(UserSummaryDTO.builder()
-                                .id(fp.getUser().getId())
-                                .name(fp.getUser().getName())
-                                .build())
+                        .user(userMapper.toUserSummaryDTO(fp.getUser()))
                         .rating(fp.getFilmPoint())
                         .text(fp.getComment())
                         .created(fp.getCreated())
