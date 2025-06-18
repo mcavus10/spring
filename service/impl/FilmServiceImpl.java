@@ -10,6 +10,7 @@ import com.example.moodmovies.service.FilmService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -34,6 +35,9 @@ public class FilmServiceImpl implements FilmService {
 
     private final FilmInfoRepository filmInfoRepository;
     private final FilmPointRepository filmPointRepository;
+
+    @Value("${app.base-url:http://localhost:8080}")
+    private String baseUrl;
 
     @Override
     @Transactional(readOnly = true) // Veritabanından sadece okuma
@@ -110,9 +114,7 @@ public class FilmServiceImpl implements FilmService {
 
 
     private String generateImageUrl(String filmId) {
-        // Uygulamanızın context path'i yoksa /api/v1... yeterli
-        // Varsa context path'i de eklemeniz gerekebilir.
-        return "http://localhost:8080/api/v1/films/image/" + filmId; // Tam URL olarak güncelle
+        return baseUrl + "/api/v1/films/image/" + filmId;
     }
 
     private String formatDuration(Integer runtimeMinutes) {
