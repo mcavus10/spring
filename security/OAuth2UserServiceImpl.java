@@ -116,7 +116,11 @@ public class OAuth2UserServiceImpl extends DefaultOAuth2UserService {
     }
 
     private void updateExistingUser(User existingUser, OAuth2UserInfo oAuth2UserInfo) {
-        existingUser.setName(oAuth2UserInfo.getName());
+        // Kullanıcı kendi adını sistem içinde düzenlemiş olabilir. Eğer mevcut isim boşsa güncelle,
+        // doluysa değiştirme.
+        if (existingUser.getName() == null || existingUser.getName().isBlank()) {
+            existingUser.setName(oAuth2UserInfo.getName());
+        }
         // Diğer güncellenecek bilgiler varsa burada ekle
     }
     

@@ -2,7 +2,7 @@ package com.example.moodmovies.service;
 
 import java.util.List;
 import java.util.Optional;
-
+import com.example.moodmovies.dto.ProfileDataDTO;
 import com.example.moodmovies.dto.UserDTO;
 import com.example.moodmovies.dto.UserRegistrationRequestDTO;
 import com.example.moodmovies.dto.UserUpdateRequestDTO;
@@ -73,4 +73,11 @@ public interface UserService {
      * @return Güncellenmiş kullanıcı bilgileri
      */
     UserDTO updateUserAvatar(String userId, String avatarId);
+
+    /**
+     * Kullanıcının profil sayfasında gösterilecek tüm verileri toplar.
+     * @param userId Kullanıcı ID'si
+     * @return Profil verilerini içeren DTO
+     */
+    ProfileDataDTO getProfileData(String userId);
 }

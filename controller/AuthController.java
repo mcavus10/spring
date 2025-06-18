@@ -1,26 +1,5 @@
 package com.example.moodmovies.controller;
 
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.crypto.password.PasswordEncoder;
-
-import java.time.LocalDateTime;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.CookieValue;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RestController;
-
 import com.example.moodmovies.dto.AuthRequest;
 import com.example.moodmovies.dto.AuthResponse;
 import com.example.moodmovies.dto.UserDTO;
@@ -29,14 +8,37 @@ import com.example.moodmovies.exception.EmailAlreadyExistsException;
 import com.example.moodmovies.security.CookieService;
 import com.example.moodmovies.security.JwtTokenProvider;
 import com.example.moodmovies.security.UserPrincipal;
+import com.example.moodmovies.service.OAuth2UserInfo;
 import com.example.moodmovies.service.UserService;
-
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken.Payload;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
+import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.json.gson.GsonFactory;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
+@Slf4j // Loglama için eklendi
 public class AuthController {
 
     private final AuthenticationManager authenticationManager;
@@ -44,8 +46,11 @@ public class AuthController {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider tokenProvider;
     private final CookieService cookieService;
-    
-    
+
+    // Google Client ID'sini application.properties'ten alıyoruz
+    @Value("${spring.security.oauth2.client.registration.google.client-id}")
+    private String googleClientId;
+
     @GetMapping("/test")
     public ResponseEntity<Map<String, String>> test() {
         Map<String, String> response = new HashMap<>();
@@ -57,131 +62,160 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody AuthRequest loginRequest) {
-        // Kullanıcı kimlik doğrulama
+        log.info("Login isteği alındı: {}", loginRequest.getEmail());
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        // Token oluştur
         UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
         String accessToken = tokenProvider.generateToken(authentication);
         String refreshToken = tokenProvider.generateRefreshToken(userPrincipal.getId());
 
-        // Kullanıcı bilgilerini al
         UserDTO userDTO = userService.findUserById(userPrincipal.getId());
         
-        // Cookie'leri oluştur
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.SET_COOKIE, cookieService.createAccessTokenCookie(accessToken).toString());
         headers.add(HttpHeaders.SET_COOKIE, cookieService.createRefreshTokenCookie(refreshToken).toString());
 
-        // AuthResponse oluştur ve dön (artık token'ları içermez çünkü cookie olarak gönderildi)
+        log.info("Kullanıcı {} için giriş başarılı.", userDTO.getEmail());
         return ResponseEntity.ok()
-        .headers(headers) // Cookie'ler web için gönderilmeye devam ediyor
-        .body(AuthResponse.builder()
-                .tokenType("Bearer")
-                .expiresInMs(tokenProvider.getJwtExpirationMs()) // Token geçerlilik süresini ekliyoruz
-                .user(userDTO)
-                .accessToken(accessToken) // JSON yanıtına token'ı ekliyoruz
-                .build());
+                .headers(headers)
+                .body(AuthResponse.builder()
+                        .tokenType("Bearer")
+                        .expiresInMs(tokenProvider.getJwtExpirationMs())
+                        .user(userDTO)
+                        .accessToken(accessToken) // Mobil için
+                        .build());
     }
 
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody UserRegistrationRequestDTO registrationRequest) {
-        // E-posta zaten kullanımda mı kontrol et
+        log.info("Register isteği alındı: {}", registrationRequest.getEmail());
         if (userService.findByEmail(registrationRequest.getEmail()).isPresent()) {
             throw new EmailAlreadyExistsException("Bu e-posta adresi zaten kullanımda: " + registrationRequest.getEmail());
         }
 
-        // Şifreyi hashle
         registrationRequest.setPassword(passwordEncoder.encode(registrationRequest.getPassword()));
         
-        // LOCAL provider ile yeni kullanıcı oluştur
         UserDTO registeredUser = userService.registerLocalUser(registrationRequest);
         
-        // Kayıt sonrası otomatik oturum açma için UserPrincipal oluştur
         UserPrincipal userPrincipal = UserPrincipal.builder()
             .id(registeredUser.getId())
             .email(registeredUser.getEmail())
-            .name(registeredUser.getName()) 
-            .password("") // Şifre alanı - doğrulama için gerekli değil
+            .name(registeredUser.getName())
+            .password("") // Şifre kimlik doğrulama için gerekli değil
             .authorities(Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER")))
             .build();
         
-        // Geçici kimlik doğrulama nesnesi oluştur
-        Authentication authentication = new UsernamePasswordAuthenticationToken(
-            userPrincipal, 
-            null, // Credentials (bu aşamada null olabilir)
-            userPrincipal.getAuthorities()
-        );
-        
-        // Kimlik doğrulama bileşenini güvenlik bağlamına ayarla
+        Authentication authentication = new UsernamePasswordAuthenticationToken(userPrincipal, null, userPrincipal.getAuthorities());
         SecurityContextHolder.getContext().setAuthentication(authentication);
         
-        // Token'ları oluştur
         String accessToken = tokenProvider.generateToken(authentication);
         String refreshToken = tokenProvider.generateRefreshToken(registeredUser.getId());
         
-        // Cookie'leri oluştur
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.SET_COOKIE, cookieService.createAccessTokenCookie(accessToken).toString());
         headers.add(HttpHeaders.SET_COOKIE, cookieService.createRefreshTokenCookie(refreshToken).toString());
         
-        // AuthResponse oluştur ve dön
-        return ResponseEntity.ok()
-        .headers(headers) // Cookie'ler web için gönderilmeye devam ediyor
-        .body(AuthResponse.builder()
-                .tokenType("Bearer")
-                .expiresInMs(tokenProvider.getJwtExpirationMs()) // Token geçerlilik süresini ekliyoruz
-                .user(registeredUser)
-                .accessToken(accessToken) // JSON yanıtına token'ı ekliyoruz
-                .build());
+        log.info("Yeni kullanıcı kaydedildi ve oturum açıldı: {}", registeredUser.getEmail());
+        return ResponseEntity.status(HttpStatus.CREATED) // Yeni kaynak oluşturulduğu için 201 Created dönmek daha doğru
+                .headers(headers)
+                .body(AuthResponse.builder()
+                        .tokenType("Bearer")
+                        .expiresInMs(tokenProvider.getJwtExpirationMs())
+                        .user(registeredUser)
+                        .accessToken(accessToken) // Mobil için
+                        .build());
+    }
+
+    /**
+     * Android uygulamasından gelen Google ID Token'ını doğrular, kullanıcı oluşturur/günceller ve JWT döndürür.
+     */
+    @PostMapping("/google/verify")
+    public ResponseEntity<AuthResponse> verifyGoogleToken(@RequestBody Map<String, String> tokenMap) {
+        String idTokenString = tokenMap.get("idToken");
+        log.info("Google token doğrulama isteği alındı.");
+        if (idTokenString == null || idTokenString.isBlank()) {
+            log.warn("Google token doğrulama isteği boş token ile geldi.");
+            return ResponseEntity.badRequest().build();
+        }
+
+        // GoogleIdTokenVerifier'ı her istekte oluşturmak daha güvenli ve basittir.
+        GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(), new GsonFactory())
+                .setAudience(Collections.singletonList(googleClientId))
+                .build();
+
+        try {
+            GoogleIdToken idToken = verifier.verify(idTokenString);
+            if (idToken == null) {
+                log.warn("Geçersiz Google ID Token alındı.");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(null);
+            }
+
+            Payload payload = idToken.getPayload();
+            String email = payload.getEmail();
+            String name = (String) payload.get("name");
+            String providerId = payload.getSubject();
+            String pictureUrl = (String) payload.get("picture");
+
+            log.info("Google token doğrulandı. Email: {}", email);
+
+            // OAuth2UserServiceImpl'deki mantığı taklit ederek kullanıcıyı işle
+            OAuth2UserInfo oauth2UserInfo = new OAuth2UserInfo(
+                (Map<String, Object>) payload, providerId, name, email, pictureUrl
+            );
+            UserDTO userDTO = userService.processOAuthUserLogin(oauth2UserInfo);
+
+            // Kullanıcı için kendi JWT token'ımızı oluştur
+            String accessToken = tokenProvider.generateTokenFromUserId(userDTO.getId());
+            
+            log.info("Google kullanıcısı {} için JWT oluşturuldu.", userDTO.getEmail());
+
+            // Mobil uygulama için AuthResponse'u döndür
+            return ResponseEntity.ok(AuthResponse.builder()
+                    .tokenType("Bearer")
+                    .accessToken(accessToken)
+                    .user(userDTO)
+                    .expiresInMs(tokenProvider.getJwtExpirationMs())
+                    .build());
+
+        } catch (Exception e) {
+            log.error("Google token doğrulama hatası: ", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 
     @PostMapping("/refresh-token")
-    public ResponseEntity<AuthResponse> refreshToken(
-            @CookieValue(name = "refreshToken", required = false) String refreshTokenFromCookie) {
-        
+    public ResponseEntity<AuthResponse> refreshToken(@CookieValue(name = "refreshToken", required = false) String refreshTokenFromCookie) {
         String refreshToken = refreshTokenFromCookie;
-        
-        // Refresh token'ı doğrula
         if (refreshToken == null || !tokenProvider.validateToken(refreshToken)) {
             return ResponseEntity.badRequest().build();
         }
 
-        // Token'dan user ID al
         String userId = tokenProvider.getUserIdFromJWT(refreshToken);
-
-        // Yeni access token oluştur
         String newAccessToken = tokenProvider.generateTokenFromUserId(userId);
         String newRefreshToken = tokenProvider.generateRefreshToken(userId);
-
-        // Kullanıcı bilgilerini al
         UserDTO userDTO = userService.findUserById(userId);
         
-        // Cookie'leri oluştur
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.SET_COOKIE, cookieService.createAccessTokenCookie(newAccessToken).toString());
         headers.add(HttpHeaders.SET_COOKIE, cookieService.createRefreshTokenCookie(newRefreshToken).toString());
 
-        // AuthResponse oluştur ve dön
         return ResponseEntity.ok()
-        .headers(headers)
-        .body(AuthResponse.builder()
-                .tokenType("Bearer")
-                .expiresInMs(tokenProvider.getJwtExpirationMs())
-                .user(userDTO)
-                .accessToken(newAccessToken) // JSON yanıtına YENİ token'ı ekliyoruz
-                .build());
+                .headers(headers)
+                .body(AuthResponse.builder()
+                        .tokenType("Bearer")
+                        .expiresInMs(tokenProvider.getJwtExpirationMs())
+                        .user(userDTO)
+                        .accessToken(newAccessToken)
+                        .build());
     }
     
     @PostMapping("/logout")
     public ResponseEntity<?> logout() {
-        // Güvenlik bağlamını temizle
         SecurityContextHolder.clearContext();
         
-        // Cookie'leri sil
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.SET_COOKIE, cookieService.deleteAccessTokenCookie().toString());
         headers.add(HttpHeaders.SET_COOKIE, cookieService.deleteRefreshTokenCookie().toString());
