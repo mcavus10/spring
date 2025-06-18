@@ -8,6 +8,7 @@ import com.example.moodmovies.service.MovieRecommendationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.util.List;
 
@@ -61,10 +62,16 @@ public class MovieRecommendationServiceImpl implements MovieRecommendationServic
      * @return FilmSummaryDTO with basic film information
      */
     private FilmSummaryDTO convertToSummaryDTO(FilmInfo filmInfo) {
+        String baseUrl;
+        try {
+            baseUrl = ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
+        } catch (Exception e) {
+            baseUrl = "http://localhost:8080";
+        }
         return FilmSummaryDTO.builder()
                 .id(filmInfo.getId())
                 .title(filmInfo.getName())
-                .imageUrl("http://localhost:8080/api/v1/films/image/" + filmInfo.getId()) // Tam URL
+                .imageUrl(baseUrl + "/api/v1/films/image/" + filmInfo.getId()) // Tam, dinamik URL
                 .build();
     }
 }

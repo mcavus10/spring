@@ -17,6 +17,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable; // DOĞRU IMPORT BU
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.util.Collections;
 import java.util.List;
@@ -302,7 +303,7 @@ public class FilmListServiceImpl implements FilmListService {
 
             FilmListInfoId filmListInfoId = new FilmListInfoId(listId, filmId);
             if (filmListInfoRepository.existsById(filmListInfoId)) {
-                log.warn("⚠️ Film zaten listede mevcut - FilmId: {}, ListId: {}, ListName: '{}'", 
+                log.warn("⚠ Film zaten listede mevcut - FilmId: {}, ListId: {}, ListName: '{}'", 
                         filmId, listId, filmList.getName());
                 // Hata fırlatmak yerine mevcut listeyi döndürmek daha kullanıcı dostu olabilir.
                 return mapToFilmListDetailDTO(filmList);
@@ -362,7 +363,7 @@ public class FilmListServiceImpl implements FilmListService {
 
             FilmListInfoId filmListInfoId = new FilmListInfoId(listId, filmId);
             if (!filmListInfoRepository.existsById(filmListInfoId)) {
-                log.warn("⚠️ Film listede bulunamadı, silme işlemi atlandı - FilmId: {}, ListId: {}, ListName: '{}'", 
+                log.warn("⚠ Film listede bulunamadı, silme işlemi atlandı - FilmId: {}, ListId: {}, ListName: '{}'", 
                         filmId, listId, filmList.getName());
                 return; // Film zaten listede yoksa bir şey yapma
             }
@@ -413,7 +414,7 @@ public class FilmListServiceImpl implements FilmListService {
                 
                 int foundFilms = filmInfoMap.size();
                 if (foundFilms != filmIds.size()) {
-                    log.warn("⚠️ Bazı filmler bulunamadı - ListId: {}, Expected: {}, Found: {}, MissingFilms: {}", 
+                    log.warn("⚠ Bazı filmler bulunamadı - ListId: {}, Expected: {}, Found: {}, MissingFilms: {}", 
                             filmList.getListId(), filmIds.size(), foundFilms, 
                             filmIds.stream().filter(id -> !filmInfoMap.containsKey(id)).collect(Collectors.toList()));
                 }
@@ -497,7 +498,7 @@ public class FilmListServiceImpl implements FilmListService {
     private UserDTO convertToUserDTO(User user) {
         try {
             if (user == null) {
-                log.warn("⚠️ UserDTO dönüşümü için null User entity");
+                log.warn("⚠ UserDTO dönüşümü için null User entity");
                 return null;
             }
             
@@ -521,7 +522,7 @@ public class FilmListServiceImpl implements FilmListService {
     private FilmSummaryDTO convertToFilmSummaryDTO(FilmInfo filmInfo) {
         try {
             if (filmInfo == null) {
-                log.warn("⚠️ FilmSummaryDTO dönüşümü için null FilmInfo entity");
+                log.warn("⚠ FilmSummaryDTO dönüşümü için null FilmInfo entity");
                 return null;
             }
             
@@ -538,14 +539,21 @@ public class FilmListServiceImpl implements FilmListService {
         }
     }
     
-    private String generateImageUrl(String filmId) {
+    private String getBaseUrl() {
         try {
-            // Bu URL yapısı projenizdeki FilmController'daki resim endpoint'i ile tutarlı olmalı
-            return "http://localhost:8080/api/v1/films/image/" + filmId;
+            return ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
         } catch (Exception e) {
-            log.error("❌ Film image URL oluşturma hatası - FilmId: {}, Error: {}", filmId, e.getMessage(), e);
-            return null; // Fallback olarak null döndür
+            return "http://localhost:8080";
         }
+    }
+    
+    private String generateImageUrl(String filmId) {
+        return getBaseUrl() + "/api/v1/films/image/" + filmId;
+    }
+    
+    private String generateAvatarUrl(String avatarId) {
+        if (avatarId == null) return null;
+        return getBaseUrl() + "/api/v1/avatars/" + avatarId + "/image";
     }
 
     @Override
@@ -564,7 +572,7 @@ public class FilmListServiceImpl implements FilmListService {
         return UserSummaryDTO.builder()
                 .id(user.getId())
                 .name(user.getName())
-                .avatarImageUrl(user.getAvatarId() != null ? "/api/v1/avatars/" + user.getAvatarId() + "/image" : null)
+                .avatarImageUrl(generateAvatarUrl(user.getAvatarId()))
                 .build();
     }
 }

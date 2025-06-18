@@ -5,8 +5,8 @@ import com.example.moodmovies.dto.UserSummaryDTO;
 import com.example.moodmovies.model.User;
 import com.example.moodmovies.service.AvatarService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 @Component
 @RequiredArgsConstructor
@@ -14,9 +14,6 @@ public class UserMapper {
 
     @SuppressWarnings("unused")
     private final AvatarService avatarService;
-
-    @Value("${app.base-url:http://localhost:8080}")
-    private String baseUrl;
 
     // User -> UserDTO dönüşümü
     public UserDTO toUserDTO(User user) {
@@ -62,7 +59,12 @@ public class UserMapper {
         if (avatarId == null) {
             return null;
         }
-        // Artık dosyayı base64 dönmek yerine doğrudan URL vereceğiz
-        return baseUrl + "/api/v1/avatars/" + avatarId + "/image";
+        try {
+            String baseUrl = ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
+            return baseUrl + "/api/v1/avatars/" + avatarId + "/image";
+        } catch (Exception e) {
+            // Fallback for when not in a request context
+            return "http://localhost:8080/api/v1/avatars/" + avatarId + "/image";
+        }
     }
-} 
+}

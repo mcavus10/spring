@@ -23,6 +23,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.math.BigDecimal;
 import java.util.Collections;
@@ -246,6 +247,11 @@ public class UserInteractionServiceImpl implements UserInteractionService {
     }
 
     private String generateImageUrl(String filmId) {
-        return "http://localhost:8080/api/v1/films/image/" + filmId; // Kendi URL yapınıza göre güncelleyin
+        try {
+            String baseUrl = ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
+            return baseUrl + "/api/v1/films/image/" + filmId;
+        } catch (Exception e) {
+            return "http://localhost:8080/api/v1/films/image/" + filmId;
+        }
     }
 }
